@@ -1,0 +1,823 @@
+---
+title: "R Notebook for Siirila-Woodburn et al., WRR, 2023"
+output: html_notebook
+---
+```{r}
+###################### Figure 1 ###################### 
+#See GIS Files for Fig 1a and Fig 1b
+#See Matlab code from B. Hatchett for Fig 1c
+
+###################### Figure 2 ###################### 
+#Conceptual diagram made in powerpoint
+
+###################### Figure 3 ###################### 
+
+library("MASS")
+#library(ggplot2)
+library(graphics)
+#library(fields)
+#rm(list=ls())
+
+#directory1 = "/global/cscratch1/sd/woodburn/hydro_of_ars/precip_bargraph"
+directory1 = "/Users/erica/data/cosumnes/hydro_of_ars/archive_zenodo"
+setwd(directory1)
+source("PFB-ReadFcn.R")
+
+nx=667
+ny=400
+T_frz=273.66
+
+#First load 1 pressure head to determine watershed mask
+#fin_mask=sprintf("/global/cscratch1/sd/fadji/Parflow01/Parflow/WRF-PF-year/dn7.out.press.00001.pfb") 	
+fin_mask=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/archive_zenodo/dn7.out.press.00000.pfb") 	
+mask_temp=readpfb(fin_mask,F)
+
+count_mask=0
+mask=array(0,dim=c(667,400))
+for (j in 1:ny)  {	
+  for (i in 1:nx)  {
+    if (mask_temp[i,j,1]>-3.402823e+38) {
+      mask[i,j]=1
+      count_mask=count_mask+1
+    }
+  }
+}
+count_mask
+#count_mask=139433
+#139433 or 52.2% cells
+```
+
+```{r}
+###############Ran these on CORI, so read in output here  ########################
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/precip_sum_all.v2.txt")
+precip_sum_all=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/precip_sum_AR.v2.txt")
+precip_sum_AR=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/snowfall_sum_all.v2.txt")
+snowfall_sum_all=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/snowfall_sum_AR.v2.txt")
+snowfall_sum_AR=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/rainfall_sum_all.v2.txt")
+rainfall_sum_all=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/rainfall_sum_AR.v2.txt")
+rainfall_sum_AR=read.table(file=fin,sep="")
+
+#Now calc cumulative WY totals
+cumul_precip_sum_all=array(0,dim=c(8760))
+cumul_snowfall_sum_all=array(0,dim=c(8760))
+cumul_rainfall_sum_all=array(0,dim=c(8760))
+
+cumul_precip_sum_AR=array(0,dim=c(8760))
+cumul_snowfall_sum_AR=array(0,dim=c(8760))
+cumul_rainfall_sum_AR=array(0,dim=c(8760))
+hour=array(0,dim=c(8760))
+
+for (t in 2:8753) {
+  hour[t]=t
+  cumul_precip_sum_all[t]=cumul_precip_sum_all[t-1]+precip_sum_all[t,1]
+  cumul_snowfall_sum_all[t]=cumul_snowfall_sum_all[t-1]+snowfall_sum_all[t,1]
+  cumul_rainfall_sum_all[t]=cumul_rainfall_sum_all[t-1]+rainfall_sum_all[t,1]
+
+  cumul_precip_sum_AR[t]=cumul_precip_sum_AR[t-1]+precip_sum_AR[t,1]
+  cumul_snowfall_sum_AR[t]=cumul_snowfall_sum_AR[t-1]+snowfall_sum_AR[t,1]
+  cumul_rainfall_sum_AR[t]=cumul_rainfall_sum_AR[t-1]+rainfall_sum_AR[t,1]
+}
+
+# write.matrix(cumul_precip_sum_all, file="cumul_precip_sum_all.v4.txt")
+# write.matrix(cumul_snowfall_sum_all, file="cumul_snowfall_sum_all.v4.txt")
+# write.matrix(cumul_rainfall_sum_all, file="cumul_rainfall_sum_all.v4.txt")
+# 
+# write.matrix(cumul_precip_sum_AR, file="cumul_precip_sum_AR.v4.txt")
+# write.matrix(cumul_snowfall_sum_AR, file="cumul_snowfall_sum_AR.v4.txt")
+# write.matrix(cumul_rainfall_sum_AR, file="cumul_rainfall_sum_AR.v4.txt")
+
+
+
+
+
+###############Ran these on CORI, so read in output here  ########################
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/precip_sum_all.v4.txt")
+precip_sum_all=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/precip_sum_AR.v4.txt")
+precip_sum_AR=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/snowfall_sum_all.v4.txt")
+snowfall_sum_all=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/snowfall_sum_AR.v4.txt")
+snowfall_sum_AR=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/rainfall_sum_all.v4.txt")
+rainfall_sum_all=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/rainfall_sum_AR.v4.txt")
+rainfall_sum_AR=read.table(file=fin,sep="")
+
+
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/cumul_precip_sum_all.v4.txt")
+cumul_precip_sum_all=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/cumul_precip_sum_AR.v4.txt")
+cumul_precip_sum_AR=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/cumul_snowfall_sum_all.v4.txt")
+cumul_snowfall_sum_all=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/cumul_snowfall_sum_AR.v4.txt")
+cumul_snowfall_sum_AR=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/cumul_rainfall_sum_all.v4.txt")
+cumul_rainfall_sum_all=read.table(file=fin,sep="")
+
+fin=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/cumul_rainfall_sum_AR.v4.txt")
+cumul_rainfall_sum_AR=read.table(file=fin,sep="")
+
+#End of year totals 
+
+cumul_precip_sum_all[8753,1] #79180.07
+cumul_rainfall_sum_all[8753,1] #66656.68
+cumul_snowfall_sum_all[8753,1] #12523.4
+#nAR fraction of precip that is snowfall =
+cumul_snowfall_sum_all[8753,1] / cumul_precip_sum_all[8753,1]*100 #15.81635
+
+cumul_precip_sum_AR[8753,1] #41622.96
+cumul_rainfall_sum_AR[8753,1] #36126.06
+cumul_snowfall_sum_AR[8753,1] #5496.903
+#AR fraction of precip that is snowfall =
+cumul_snowfall_sum_AR[8753,1] / cumul_precip_sum_AR[8753,1]*100 #13.20642%
+
+#Fraction of total precip that is AR
+cumul_precip_sum_AR[8753,1]/cumul_precip_sum_all[8753,1]*100 #52.56747%
+
+```
+
+
+
+
+
+```{r}
+
+############################### Figure 3b ##################################
+#Fig_out='Fig.precip_AR_v_nAR.stacked.v4.png'
+#png(file=Fig_out)
+par(mfrow=c(1,1))
+#Change so margin doesn't get cut off
+par(mar=c(5,6,4,1)+.1)
+plot(x=hour[1:8753]/24,y=(cumul_precip_sum_all[1:8753,1]*3600/count_mask),ylim=c(0,2000),type="l",ylab="Average Cumulative Precipitation (mm)",xlab="Day of WY",cex.lab = 1,cex.axis = 1, box=FALSE)
+rect(305/24,0,393/24,3500,col="bisque2",border='NA')
+rect(1671/24,0,1811/24,3500,col="bisque2",border='NA')
+rect(2276/24,0,2318/24,3500,col="bisque2",border='NA')
+rect(2365/24,0,2415/24,3500,col="bisque2",border='NA')
+rect(2433/24,0,2459/24,3500,col="bisque2",border='NA')
+rect(2617/24,0,2649/24,3500,col="bisque2",border='NA')
+rect(3074/24,0,3200/24,3500,col="bisque2",border='NA')
+rect(3294/24,0,3336/24,3500,col="bisque2",border='NA')
+rect(3401/24,0,3446/24,3500,col="bisque2",border='NA')
+rect(4475/24,0,4549/24,3500,col="bisque2",border='NA')
+polygon(x=c(1,hour[1:8753]/24,8753/24),y=c(0,((cumul_precip_sum_all[1:8753,1])*3600/count_mask),0),col="deepskyblue2")
+#polygon(x=c(1,hour[1:8753]/24,8753/24),y=c(0,((cumul_precip_sum_AR[1:8753,1]-(cumul_rainfall_sum_all[1:8753,1]-cumul_rainfall_sum_AR[1:8753,1]))*3600/count_mask),0),col="deepskyblue2")
+polygon(x=c(1,hour[1:8753]/24,8753/24),y=c(0,((cumul_snowfall_sum_all[1:8753,1]+cumul_rainfall_sum_AR[1:8753,1])*3600/count_mask),0),col="white",density=25)
+polygon(x=c(1,hour[1:8753]/24,8753/24),y=c(0,(cumul_snowfall_sum_all[1:8753,1]*3600/count_mask),0),col="white")
+polygon(x=c(1,hour[1:8753]/24,8753/24),y=c(0,(cumul_snowfall_sum_AR[1:8753,1]*3600/count_mask),0),col="antiquewhite4",density=25)
+lines(x=hour[1:8753]/24,y=(cumul_snowfall_sum_all[1:8753,1]+cumul_rainfall_sum_AR[1:8753,1])*3600/count_mask)
+lines(x=hour[1:8753]/24,y=(cumul_snowfall_sum_all[1:8753,1]*3600/count_mask))
+lines(x=hour[1:8753]/24,y=(cumul_snowfall_sum_AR[1:8753,1]*3600/count_mask))
+text(260,1600,"non-AR rain",cex= 1)
+text(260,700,"AR rain",cex= 1)
+text(260,240,"non-AR snow",cex= 1)
+text(260,60,"AR snow",cex= 1)
+#dev.off()
+```
+```{r}
+
+############################ FIGURE 3a ############################ 
+Fig_out='Fig.barplot_new.v4.png'
+png(file=Fig_out)
+par(mfrow=c(1,1)) 
+array_AR=array(0,dim=c(3,10))
+array_AR[1,1:10]=precip_sum_AR[1:10,1]
+array_AR[2,1:10]=rainfall_sum_AR[1:10,1]
+array_AR[3,1:10]=snowfall_sum_AR[1:10,1]
+barplot(array_AR[2:3,1:10]*3600/count_mask,beside=FALSE,col=c("deepskyblue2","gray"),ylim=c(-15,250),ylab="Average Precipitation total (mm)",density=30)
+text(.7,-10,"AR1")
+text(1.9,-10,"AR2")
+text(3.1,-10,"AR3")
+text(4.3,-10,"AR4")
+text(5.5,-10,"AR5")
+text(6.7,-10,"AR6")
+text(7.9,-10,"AR7")
+text(9.1,-10,"AR8")
+text(10.3,-10,"AR9")
+text(11.5,-10,"AR10")
+text(11.,240,"Rain",col="deepskyblue",cex=1.3)
+text(11.,225,"Snow",col="gray",cex=1.3)
+dev.off()
+```
+
+
+
+
+```{r}
+
+########################################### FIGURE 4 MAPS .tif files in dir: /Figure4_MAPS ########################################### 
+
+
+#For each storm duration, look at snow differences
+#Make a mask which marks the regions where ther is a decrease in SWE following an AR; 
+#Make two more masks which mark regions of SWE cover during peak SWE, and peak SWE at any point
+
+directory1 = "/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files"
+setwd(directory1)
+source("PFB-ReadFcn.R")
+
+domain_sum=array(0,dim=c(10))
+
+#Zero-out this mask so that ANY AR swe decrease is counted in the mask
+mask_neg_swe=array(0,dim=c(nx,ny))
+
+# #For AR storms, do a loop to 10
+
+for (t_outer in 1:10) {
+if (t_outer==1) {
+ti=305
+tf=393
+}
+if (t_outer==2) {
+ti=1671
+tf=1811
+}
+if (t_outer==3){
+ti=2276
+tf=2318
+}
+if (t_outer==4){
+ti=2365
+tf=2415
+}
+if (t_outer==5){
+ti=2433
+tf=2459
+}
+if (t_outer==6){
+ti=2617
+tf=2649
+}
+if (t_outer==7){
+ti=3074
+tf=3200
+}
+if (t_outer==8){
+ti=3294
+tf=3336
+}
+if (t_outer==9){
+ti=3401
+tf=3446
+}
+if (t_outer==10){
+ti=4475
+tf=4549
+}
+		swe_ti=array(0,dim=c(nx,ny))
+		swe_tf=array(0,dim=c(nx,ny))
+		swe_diff=array(0,dim=c(nx,ny))
+
+		
+		fin_ti=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/d04.out.clm_output.%05d.C.pfb",ti) 	
+		data_ti=readpfb(fin_ti,F)
+		
+		fin_tf=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/d04.out.clm_output.%05d.C.pfb",tf) 	
+		data_tf=readpfb(fin_tf,F)
+	
+ for (j in 1:ny)  {	
+	for (i in 1:nx)  {
+		swe_ti[i,j]=data_ti[i,j,11]
+		swe_tf[i,j]=data_tf[i,j,11]
+		swe_diff[i,j]=swe_tf[i,j]-swe_ti[i,j]
+		
+		#4-15-21 Addition to make mask of regions where swe decreases after an AR
+		if (swe_diff[i,j]<0.0){
+		  mask_neg_swe[i,j]=1
+		}
+ 	}#end nx
+ }#end ny
+ 
+# fout=sprintf("SWE_diff_at_%d-%d.txt",tf,ti)
+# fout_ti=sprintf("SWE_ti_at_%d-%d.txt",tf,ti)	
+# fout_tf=sprintf("SWE_tf_at_%d-%d.txt",tf,ti)	
+# 	
+# write("667 400 1 ",file=fout,1,append=FALSE,sep=" ")
+# write("667 400 1 ",file=fout_ti,1,append=FALSE,sep=" ")
+# write("667 400 1 ",file=fout_tf,1,append=FALSE,sep=" ")
+#	
+# 
+#  
+#  for (j in 1:ny)  {	
+#   for (i in 1:nx)  {
+#  	domain_sum[t_outer]=domain_sum[t_outer]+swe_diff[i,j]
+# 	write(swe_diff[i,j],file=fout,1,append=TRUE,sep=" ")
+# 	write(swe_ti[i,j],file=fout_ti,1,append=TRUE,sep=" ")
+# 	write(swe_tf[i,j],file=fout_tf,1,append=TRUE,sep=" ")
+#   }
+#  }
+ 
+} #End t_outer
+
+
+#For model domain mask, load 1 pressure head
+fin_mask=sprintf("dn7.out.press.00000.pfb") 	
+mask_temp=readpfb(fin_mask,F)
+
+count_mask=0
+mask=array(0,dim=c(667,400))
+for (j in 1:ny)  {	
+  for (i in 1:nx)  {
+    if (mask_temp[i,j,1]>-3.402823e+38) {
+      mask[i,j]=1
+      #count_mask=count_mask+1
+    }
+  }
+}
+#count_mask
+#139433 or 52.2% cells
+
+#AR avg snow accumulation during storm
+#domain_sum/nx/ny
+#1.8600896  1.5319703 10.0677461  8.0385451  9.0561685  5.8882381  9.2425241 -0.1975404  8.7065342  6.2999536
+
+#N-AR avg snow accumulation during storm
+#domain_sum/nx/ny
+#0.03459863  1.46161383  2.51378978  4.92608081  1.32181489  7.24836623 -0.26839457
+
+image(mask_neg_swe)
+```
+
+
+```{r}
+fout_m=sprintf("mask_neg_swe.txt")	
+write("667 400 1 ",file=fout_m,1,append=FALSE,sep=" ")
+
+ for (j in 1:ny)  {
+  for (i in 1:nx)  {
+	write(mask_neg_swe[i,j],file=fout_m,1,append=TRUE,sep=" ")
+  }
+ }
+
+
+#Now look at ALL hours, check for SWE cover
+mask_swe=array(0,dim=c(nx,ny))
+mask_pos_swe=array(0,dim=c(nx,ny))
+
+for (t in seq(from=1, to=4600, by=23)) {
+  
+  #if (t%%240==1) {
+    print(t)
+  #}
+  
+  fin_t=sprintf("/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/d04.out.clm_output.%05d.C.pfb",t) 	
+  data_t=readpfb(fin_t,F)
+
+  for (j in 1:ny)  {	
+    for (i in 1:nx)  {
+      if (data_t[i,j,11]>0.1) {
+        mask_swe[i,j]=1
+      }
+    }
+  }
+  
+} #end t hours
+count_mask=139433
+
+for (j in 1:ny)  {	
+  for (i in 1:nx)  {
+    mask_pos_swe[i,j]=mask_swe[i,j]
+    if (mask_neg_swe[i,j]==1) {
+      mask_pos_swe[i,j]=0
+    }
+  }
+}
+
+count_mask_neg_swe=0
+count_mask_pos_swe=0
+count_mask_swe=0
+for (j in 1:ny)  {	
+  for (i in 1:nx)  {
+    if (mask_neg_swe[i,j]==1){
+      count_mask_neg_swe=count_mask_neg_swe+1
+    }
+    if (mask_swe[i,j]==1){
+      count_mask_swe=count_mask_swe+1
+    }
+    if (mask_pos_swe[i,j]==1){
+      count_mask_pos_swe=count_mask_pos_swe+1
+    }
+  }
+}
+count_mask_pos_swe
+#23,723
+count_mask_neg_swe
+#28,686
+count_mask_swe
+#52,409
+
+#image(mask_swe)
+#This one requires "fields" package, but plots legend automatically 
+image.plot(mask_swe)
+
+
+
+
+#NOW COMPUTE STORAGE for those masked areas only 
+
+dx=200.0
+dy=200.0
+nz=8 
+
+fin_indi='indicator8.pfb'
+geol=readpfb(fin_indi,F)
+
+por=array(0,c(nx,ny,nz))
+SS= array(0,c(nx,ny,nz))
+
+for(z in 1:nz){
+  for (y in 1:ny){
+    for (x in 1:nx){
+      if (geol[x,y,z]==1){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==2){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==3){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==4){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==5){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==6){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==7){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==8){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==9){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==10){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==11){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==12){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==13){
+        por[x,y,z]=0.2
+        SS[x,y,z]=0.0001}
+      if (geol[x,y,z]==14){
+        por[x,y,z]=0.2
+        SS[x,y,z]=0.0001}
+      if (geol[x,y,z]==15){
+        por[x,y,z]=0.2
+        SS[x,y,z]=0.0001}
+      if (geol[x,y,z]==16){
+        por[x,y,z]=0.2
+        SS[x,y,z]=0.0001}
+      if (geol[x,y,z]==17){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==18){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==19){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==20){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==21){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==22){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==23){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==24){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==25){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==26){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==27){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==28){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==29){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==30){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==31){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==32){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==33){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==34){
+        por[x,y,z]=0.2
+        SS[x,y,z]=0.0001}
+      if (geol[x,y,z]==35){
+        por[x,y,z]=0.2
+        SS[x,y,z]=0.0001}
+      if (geol[x,y,z]==36){
+        por[x,y,z]=0.2
+        SS[x,y,z]=0.0001}
+      if (geol[x,y,z]==37){
+        por[x,y,z]=0.2
+        SS[x,y,z]=0.0001}
+      if (geol[x,y,z]==38){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==39){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==40){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==41){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==42){
+        por[x,y,z]=0.02
+        SS[x,y,z]=0.000001}
+      if (geol[x,y,z]==43){
+        por[x,y,z]=0.2
+        SS[x,y,z]=0.0001}							
+    }
+  }
+}
+
+dz=array(0,dim=c(8))
+dz[1]=30.0
+dz[2]=25.0
+dz[3]=15.0
+dz[4]=8.0
+dz[5]=1.0
+dz[6]=0.6
+dz[7]=0.3
+dz[8]=0.1
+
+stor_unsat_mask_neg_swe=array(0,c(8760))
+stor_sat_mask_neg_swe=array(0,c(8760))
+stor_unsat_mask_pos_swe=array(0,c(8760))
+stor_sat_mask_pos_swe=array(0,c(8760))
+stor_unsat_mask_swe=array(0,c(8760))
+stor_sat_mask_swe=array(0,c(8760))
+stor_unsat=array(0,c(8760))
+stor_sat=array(0,c(8760))
+
+
+for (t in seq(from=1, to=8760, by=23)) {
+  
+  fin_press=sprintf("dn7.out.press.%05d.pfb",t) 	
+  press=readpfb(fin_press,F)
+  
+  fin_satur=sprintf("dn7.out.satur.%05d.pfb",t) 	
+  sat=readpfb(fin_satur,F)
+  
+
+    for (y in 1:ny)  {	
+      for (x in 1:nx)  {
+        
+          #Did this in code_DISC.v2.R
+          for (z in 1:nz)  {
+            if ((sat[x,y,z]==1)&&(mask[x,y]==1)){
+              stor_sat[t]=stor_sat[t]+(sat[x,y,z]*press[x,y,z]*SS[x,y,z]*dx*dy*dz[z])+(sat[x,y,z]*por[x,y,z]*dx*dy*dz[z])
+            }
+            
+            if ((sat[x,y,z]<1)&&(mask[x,y]==1)){
+              stor_unsat[t]=stor_unsat[t]+(sat[x,y,z]*por[x,y,z]*dx*dy*dz[z])
+            }		 
+          }#End z
+        
+      }#End x
+    }#End y
+
+  print(t)
+}#End t
+
+```
+
+```{r}
+##################################### FIGURE 5 ##################################### 
+#See python scripts from PJDF
+
+
+##################################### FIGURE 6a ##################################### 
+#From code_DISC.v2.R
+
+#Just want to read in files, use:
+stor_sat=array(0,c(8760))
+stor_unsat=array(0,c(8760))
+stor_unssat2_a=array(0,c(8760))
+stor_unsat2_b=array(0,c(8760))
+discharge=array(0,c(8760))
+
+fin='/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/stor_sat.1-8753.txt'
+stor_sat=matrix(scan(fin), ncol=1, nrow=8760)
+
+fin1='/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/stor_unsat.1-8753.txt'
+stor_unsat=matrix(scan(fin1), ncol=1, nrow=8760)
+
+fin2='/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/stor_unsat2_a.1-8753.txt'
+stor_unsat2_a=matrix(scan(fin2), ncol=1, nrow=8760)
+
+fin3='/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/stor_unsat2_b.1-8753.txt'
+stor_unsat2_b=matrix(scan(fin3), ncol=1, nrow=8760)
+
+fin4='/Users/erica/data/cosumnes/hydro_of_ars/results/pfb_files/discharge.1-8753.txt'
+discharge=matrix(scan(fin4), ncol=1, nrow=8760)
+
+
+summary_data=array(0,c(10,17))
+summary_data=read.csv(file="Summary_Table_AR_ERW.txt",header=FALSE,sep="\t")
+
+summary_data_nAR=array(0,c(7,17))
+summary_data_nAR=read.csv(file="Summary_Table_non-AR.txt",header=FALSE,sep="\t")
+
+
+#ERW notes to self...use these color code months to plot 
+#Fig_out='Fig.DISC.v3.pdf'
+#pdf(file=Fig_out)
+par(mfrow=c(1,1))	
+ylab.text=expression(paste("Saturated Storage m"^"3"))
+xlab.text=expression(paste("Unsaturated Storage m"^"3"))
+
+plot(y=stor_sat[2:(31*24)],x=stor_unsat2_b[2:(31*24)],type="p",col="gold",cex=0.25,ylab=ylab.text,xlab=xlab.text,ylim=c(1e5,2.6e7),xlim=c(7e6,1.8e7))
+abline(h=stor_sat[2],lw=0.2)
+abline(v=stor_unsat2_b[2],lw=0.2)
+points(y=stor_sat[((31*24)+1):(59*24)],x=stor_unsat2_b[((31*24)+1):(59*24)],type="p",col="darkorange",cex=0.25)
+points(y=stor_sat[((59*24)+1):(90*24)],x=stor_unsat2_b[((59*24)+1):(90*24)],type="p",col="red",cex=0.25)
+points(y=stor_sat[((90*24)+1):(120*24)],x=stor_unsat2_b[((90*24)+1):(120*24)],type="p",col="deeppink",cex=0.25)
+points(y=stor_sat[((120*24)+1):(151*24)],x=stor_unsat2_b[((120*24)+1):(151*24)],type="p",col="violet",cex=0.25)
+points(y=stor_sat[((151*24)+1):(181*24)],x=stor_unsat2_b[((151*24)+1):(181*24)],type="p",col="darkviolet",cex=0.25)
+points(y=stor_sat[((181*24)+1):(212*24)],x=stor_unsat2_b[((181*24)+1):(212*24)],type="p",col="blue",cex=0.25)
+points(y=stor_sat[((212*24)+1):(243*24)],x=stor_unsat2_b[((212*24)+1):(243*24)],type="p",col="steelblue2",cex=0.25)
+points(y=stor_sat[((243*24)+1):(273*24)],x=stor_unsat2_b[((243*24)+1):(273*24)],type="p",col="yellowgreen",cex=0.25)
+points(y=stor_sat[((273*24)+1):(304*24)],x=stor_unsat2_b[((273*24)+1):(304*24)],type="p",col="yellow3",cex=0.25)
+points(y=stor_sat[((304*24)+1):(334*24)],x=stor_unsat2_b[((304*24)+1):(334*24)],type="p",col="brown",cex=0.25)
+points(y=stor_sat[((334*24)+1):(365*24)],x=stor_unsat2_b[((334*24)+1):(365*24)],type="p",col="black",cex=0.25)
+#dev.off()
+
+```
+
+```{r}
+
+
+##################################### FIGURE 6b ##################################### 
+
+ylab.text=expression(paste("Saturated Storage m"^"3"))
+xlab.text=expression(paste("Unsaturated Storage m"^"3"))
+
+#Fig_out='Fig.DISC.AR_n-AR.pdf'
+pdf(file=Fig_out)
+#par(mfrow=c(2,2))	
+plot(y=stor_sat[2:8753],x=stor_unsat2_b[2:8753],type="p",col="gray",cex=0.25,ylab=ylab.text,xlab=xlab.text,ylim=c(1e5,2.6e7),xlim=c(7e6,1.8e7))
+#title(main="a) AR", adj=0)
+abline(h=stor_sat[2],lw=0.2)
+abline(v=stor_unsat2_b[2],lw=0.2)
+points(y=stor_sat[summary_data[1,1]:summary_data[1,2]],x=stor_unsat2_b[summary_data[1,1]:summary_data[1,2]],cex=0.25, col="red")
+points(y=stor_sat[summary_data[2,1]:summary_data[2,2]],x=stor_unsat2_b[summary_data[2,1]:summary_data[2,2]],cex=0.25, col="orange")
+points(y=stor_sat[summary_data[3,1]:summary_data[3,2]],x=stor_unsat2_b[summary_data[3,1]:summary_data[3,2]],cex=0.25, col="yellow")
+points(y=stor_sat[summary_data[4,1]:summary_data[4,2]],x=stor_unsat2_b[summary_data[4,1]:summary_data[4,2]],cex=0.25, col="green")
+points(y=stor_sat[summary_data[5,1]:summary_data[5,2]],x=stor_unsat2_b[summary_data[5,1]:summary_data[5,2]],cex=0.25, col="blue")
+points(y=stor_sat[summary_data[6,1]:summary_data[6,2]],x=stor_unsat2_b[summary_data[6,1]:summary_data[6,2]],cex=0.25, col="purple")
+points(y=stor_sat[summary_data[7,1]:summary_data[7,2]],x=stor_unsat2_b[summary_data[7,1]:summary_data[7,2]],cex=0.25, col="magenta")
+points(y=stor_sat[summary_data[8,1]:summary_data[8,2]],x=stor_unsat2_b[summary_data[8,1]:summary_data[8,2]],cex=0.25, col="cyan")
+points(y=stor_sat[summary_data[9,1]:summary_data[9,2]],x=stor_unsat2_b[summary_data[9,1]:summary_data[9,2]],cex=0.25, col="black")
+points(y=stor_sat[summary_data[9,1]:summary_data[9,2]],x=stor_unsat2_b[summary_data[9,1]:summary_data[9,2]],cex=0.25, col="darkred")
+
+#non-AR, don't plot in publication
+# plot(y=stor_sat[2:8753],x=stor_unsat2_b[2:8753],type="p",col="gray",cex=0.25,ylab=ylab.text,xlab=xlab.text,ylim=c(1e5,2.6e7),xlim=c(7e6,1.8e7))
+# title(main="b) Non-AR", adj=0)
+# abline(h=stor_sat[2],lw=0.2)
+# abline(v=stor_unsat2_b[2],lw=0.2)
+# #INDEX HERE IS ROW,COLUMN
+# points(y=stor_sat[summary_data_nAR[1,1]:summary_data_nAR[1,2]],x=stor_unsat2_b[summary_data_nAR[1,1]:summary_data_nAR[1,2]],cex=0.25, col="red")
+# points(y=stor_sat[summary_data_nAR[2,1]:summary_data_nAR[2,2]],x=stor_unsat2_b[summary_data_nAR[2,1]:summary_data_nAR[2,2]],cex=0.25, col="orange")
+# points(y=stor_sat[summary_data_nAR[3,1]:summary_data_nAR[3,2]],x=stor_unsat2_b[summary_data_nAR[3,1]:summary_data_nAR[3,2]],cex=0.25, col="yellow")
+# points(y=stor_sat[summary_data_nAR[4,1]:summary_data_nAR[4,2]],x=stor_unsat2_b[summary_data_nAR[4,1]:summary_data_nAR[4,2]],cex=0.25, col="green")
+# points(y=stor_sat[summary_data_nAR[5,1]:summary_data_nAR[5,2]],x=stor_unsat2_b[summary_data_nAR[5,1]:summary_data_nAR[5,2]],cex=0.25, col="blue")
+# points(y=stor_sat[summary_data_nAR[6,1]:summary_data_nAR[6,2]],x=stor_unsat2_b[summary_data_nAR[6,1]:summary_data_nAR[6,2]],cex=0.25, col="purple")
+# points(y=stor_sat[summary_data_nAR[7,1]:summary_data_nAR[7,2]],x=stor_unsat2_b[summary_data_nAR[7,1]:summary_data_nAR[7,2]],cex=0.25, col="magenta")
+## dev.off()
+```
+
+
+
+```{r}
+######################################## Supplmental Figures ####################################### 
+
+#ERW 1-10-23
+#For RRC plot the change in groundwater pressure head for each month -- for Supplemental
+
+library("MASS")
+library(ggplot2)
+library(graphics)
+library('plot.matrix')
+library(fields)
+
+#rm(list=ls())
+
+directory1 = "/Users/erica/data/cosumnes/hydro_of_ars/results/jan23/monthly-end-pfb"
+setwd(directory1)
+source("PFB-ReadFcn.R")
+
+#######################################################
+#Use this for different color maps
+#install.packages("colorspace")
+library("colorspace")
+library(mapdeck)
+library(sf)
+pal <- choose_palette()
+
+hcl_palettes(plot = TRUE)
+q7 =  diverging_hcl(110, palette = "Blue-Red 3")
+
+
+#######################################################
+
+fin=sprintf("wrf_wy2017.out.press.00001.pfb") 	
+press_0=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.00744.pfb") 	
+press_1=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.01464.pfb") 	
+press_2=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.02208.pfb") 	
+press_3=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.02952.pfb") 	
+press_4=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.03624.pfb") 	
+press_5=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.04368.pfb") 	
+press_6=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.05088.pfb") 	
+press_7=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.05832.pfb") 	
+press_8=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.06552.pfb") 	
+press_9=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.07296.pfb") 	
+press_10=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.08040.pfb") 	
+press_11=readpfb(fin,F)
+
+fin=sprintf("wrf_wy2017.out.press.08754.pfb") 	
+press_12=readpfb(fin,F)
+
+#Oct
+image.plot(press_0[,,1]-press_1[,,1],zlim=c(-15,15),col=q7,xaxt='n',yaxt='n')
+#Nov
+image.plot(press_0[,,1]-press_2[,,1],zlim=c(-15,15),col=q7,xaxt='n',yaxt='n')
+#...
+image.plot(press_0[,,1]-press_12[,,1],zlim=c(-15,15),col=q7,xaxt='n',yaxt='n')
+
+```
+
+
